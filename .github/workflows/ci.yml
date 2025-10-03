@@ -24,7 +24,7 @@ jobs:
           echo Starting to push repo to gitlab
           git config user.name "${GITLAB_USERNAME}"
           git config user.email "${GITLAB_EMAIL}"
-          GITLAB_URL="https://oauth2:${GITLAB_TOKEN}@${GITLAB_REPOSITORY_URL}"
+          GITLAB_URL="https://oauth2:${GITLAB_ACCESS_TOKEN}@${GITLAB_REPOSITORY_URL}"
           
           git remote add gitlab "${GITLAB_URL}"
           git push gitlab develop
