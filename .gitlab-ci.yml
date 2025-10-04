@@ -17,16 +17,13 @@ build_docker_image:
     - docker info
   script:
     - echo "Building Docker image..."
-    - docker build -t $IMAGE_NAME:$CI_COMMIT_SHORT_SHA .
-    - docker tag $IMAGE_NAME:$CI_COMMIT_SHORT_SHA $IMAGE_NAME:latest
-    - echo "Saving Docker images..."
-    - docker save $IMAGE_NAME:$CI_COMMIT_SHORT_SHA -o image.tar
-    - docker save $IMAGE_NAME:latest -o image-latest.tar
+    - docker build -t $IMAGE_NAME:develop .
+    - echo "Saving Docker image..."
+    - docker save $IMAGE_NAME:develop -o image.tar
     - ls -lh *.tar
   artifacts:
     paths:
       - image.tar
-      - image-latest.tar
     expire_in: 1 hour
   only:
     - develop
@@ -38,24 +35,20 @@ push_to_acr:
     - docker:24-dind
   before_script:
     - ls -lh
-    - echo "Loading Docker images..."
+    - echo "Loading Docker image..."
     - docker load -i image.tar
-    - docker load -i image-latest.tar
     - docker images
     - echo "Logging into ACR..."
     - echo $ACR_PASSWORD | docker login $ACR_REGISTRY -u $ACR_USERNAME --password-stdin
   script:
-    - echo "Tagging images..."
-    - docker tag $IMAGE_NAME:$CI_COMMIT_SHORT_SHA $ACR_REGISTRY/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-    - docker tag $IMAGE_NAME:latest $ACR_REGISTRY/$IMAGE_NAME:latest
+    - echo "Tagging image..."
+    - docker tag $IMAGE_NAME:develop $ACR_REGISTRY/$IMAGE_NAME:develop
     
     - echo "Pushing to ACR..."
-    - docker push $ACR_REGISTRY/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-    - docker push $ACR_REGISTRY/$IMAGE_NAME:latest
+    - docker push $ACR_REGISTRY/$IMAGE_NAME:develop
     
-    - echo "✅ Images pushed successfully!"
-    - echo "📦 $ACR_REGISTRY/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    - echo "📦 $ACR_REGISTRY/$IMAGE_NAME:latest"
+    - echo "Image pushed successfully!"
+    - echo "Saved at: $ACR_REGISTRY/$IMAGE_NAME:develop"
   dependencies:
     - build_docker_image
   only:
