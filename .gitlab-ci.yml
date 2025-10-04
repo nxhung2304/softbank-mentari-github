@@ -43,12 +43,9 @@ push_to_acr:
   script:
     - echo "Tagging image..."
     - docker tag $IMAGE_NAME:develop $ACR_REGISTRY/$IMAGE_NAME:develop
-    
     - echo "Pushing to ACR..."
     - docker push $ACR_REGISTRY/$IMAGE_NAME:develop
-    
     - echo "Image pushed successfully!"
-    - echo "Saved at: $ACR_REGISTRY/$IMAGE_NAME:develop"
   dependencies:
     - build_docker_image
   only:
