@@ -1,0 +1,52 @@
+stages:
+  - build
+  - push
+
+variables:
+  IMAGE_NAME: softbank-mentari
+  ACR_REGISTRY: $ACR_REGISTRY_NAME.azurecr.io
+
+build_docker_image:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  script:
+    - echo "Building Docker image..."
+    - docker build -t $IMAGE_NAME:$CI_COMMIT_SHORT_SHA .
+    - docker tag $IMAGE_NAME:$CI_COMMIT_SHORT_SHA $IMAGE_NAME:latest
+    - docker save $IMAGE_NAME:$CI_COMMIT_SHORT_SHA > image.tar
+    - docker save $IMAGE_NAME:latest > image-latest.tar
+  artifacts:
+    paths:
+      - image.tar
+      - image-latest.tar
+    expire_in: 1 hour
+  only:
+    - develop
+
+push_to_acr:
+  stage: push
+  image: docker:24
+  services:
+    - docker:24-dind
+  before_script:
+    - echo "Loading Docker images..."
+    - docker load < image.tar
+    - docker load < image-latest.tar
+    - echo "Logging into ACR..."
+    - echo $ACR_PASSWORD | docker login $ACR_REGISTRY -u $ACR_USERNAME --password-stdin
+  script:
+    - echo "Tagging images..."
+    - docker tag $IMAGE_NAME:$CI_COMMIT_SHORT_SHA $ACR_REGISTRY/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+    - docker tag $IMAGE_NAME:latest $ACR_REGISTRY/$IMAGE_NAME:latest
+    
+    - echo "Pushing to ACR..."
+    - docker push $ACR_REGISTRY/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+    - docker push $ACR_REGISTRY/$IMAGE_NAME:latest
+    
+    - echo "✅ Images pushed successfully!"
+    - echo "📦 $ACR_REGISTRY/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - echo "📦 $ACR_REGISTRY/$IMAGE_NAME:latest"
+  only:
+    - develop
