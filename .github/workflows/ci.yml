@@ -2,7 +2,6 @@ name: CI
 on:
   push:
     branches: [ develop ]
-
 jobs:
   push_to_gitlab:
     runs-on: ubuntu-latest
@@ -20,7 +19,7 @@ jobs:
           echo "Starting to push repo to gitlab"
           git remote add gitlab "https://oauth2:${GITLAB_ACCESS_TOKEN}@${GITLAB_REPOSITORY_URL}"
           git push gitlab develop
-
+          
   build_docker_image:
     runs-on: ubuntu-latest
     steps:
@@ -30,27 +29,23 @@ jobs:
       - name: Build Docker image
         env:
           IMAGE_NAME: softbank-mentari
-          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAG: develop
         run: |
           echo "Building Docker image..."
           docker build -t $IMAGE_NAME:$IMAGE_TAG .
-          docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
           
       - name: Save Docker image to file
         run: |
-          docker save softbank-mentari:${{ github.sha }} -o image.tar
-          docker save softbank-mentari:latest -o image-latest.tar
+          docker save softbank-mentari:develop -o image.tar
           ls -lh *.tar
           
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
           name: docker-image
-          path: |
-            image.tar
-            image-latest.tar
+          path: image.tar
           retention-days: 1
-
+          
   push_to_acr:
     runs-on: ubuntu-latest
     needs: build_docker_image
@@ -67,7 +62,6 @@ jobs:
       - name: Load Docker images
         run: |
           docker load -i image.tar
-          docker load -i image-latest.tar
           docker images
           
       - name: Login to Azure Container Registry
@@ -82,15 +76,12 @@ jobs:
           ACR_REGISTRY: ${{ secrets.ACR_REGISTRY_NAME }}.azurecr.io
           IMAGE_NAME: softbank-mentari
         run: |
-          docker tag softbank-mentari:${{ github.sha }} $ACR_REGISTRY/$IMAGE_NAME:${{ github.sha }}
-          docker tag softbank-mentari:latest $ACR_REGISTRY/$IMAGE_NAME:latest
+          docker tag softbank-mentari:develop $ACR_REGISTRY/$IMAGE_NAME:develop
           
           echo "Pushing images to ACR..."
-          docker push $ACR_REGISTRY/$IMAGE_NAME:${{ github.sha }}
-          docker push $ACR_REGISTRY/$IMAGE_NAME:latest
+          docker push $ACR_REGISTRY/$IMAGE_NAME:develop
           
       - name: Push success
         run: |
-          echo "✅ Images pushed successfully!"
-          echo "📦 ${{ secrets.ACR_REGISTRY_NAME }}.azurecr.io/softbank-mentari:${{ github.sha }}"
-          echo "📦 ${{ secrets.ACR_REGISTRY_NAME }}.azurecr.io/softbank-mentari:latest"
+          echo "Images pushed successfully!"
+          echo "Saved at: ${{ secrets.ACR_REGISTRY_NAME }}.azurecr.io/softbank-mentari:develop"
